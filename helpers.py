@@ -129,12 +129,13 @@ def processList(s):
 #returns cost during comparison
 def score(c1,c2):
   if c1 == c2:
-    return 1
+    #orig 1,-1, sgap: -1
+    return 0
   else:
-    return -1
+    return -2
 
 def editDistance(row,col, matrix, directionMatrix, seq,ref):
-  sgap = -1
+  sgap = -2
 
   val_one = score(seq[row - 1], ref[col - 1]) + matrix[row - 1][col - 1] #diagonal
   val_two = matrix[row][col - 1] + sgap #down
@@ -192,8 +193,8 @@ def createCigar(directionMatrix,largestIndex):
       cigar = 'D' + cigar
 
   originalPosInRef = col
-  print(cigar)
-  print("length of cigar" + str(len(cigar)))
+#   print(cigar)
+#   print("length of cigar" + str(len(cigar)))
   #compress cigar 
   finalCigar = ''
   currentChar = cigar[0]

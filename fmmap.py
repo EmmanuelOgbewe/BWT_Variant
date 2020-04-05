@@ -11,6 +11,7 @@ import gzip
 import math 
 import re
 import readfq as rf
+import timer
 
 #------Handle input------#
 def parseCommandLineArgs(args=[]):
@@ -83,9 +84,9 @@ def write_to_sam(output_file,alignment, read_name, query_sequence):
    
 
     cig = generateCigarTuple(alignment.cigar)
-    print(cig)
-    print(alignment.posInRef)
-    return 
+    # print(cig)
+    # print(alignment.posInRef)
+    # return 
     header = { 'HD': {'VN': '1.0'},
             'SQ': [{'LN': 29882, 'SN':'MN988713.1 Severe acute respiratory syndrome coronavirus 2 isolate 2019-nCoV/USA-IL1/2020, complete genome'}] }
 
@@ -98,10 +99,10 @@ def write_to_sam(output_file,alignment, read_name, query_sequence):
         a.reference_start = alignment.posInRef + 1
         a.mapping_quality = 255
         a.cigar = cig
-        a.next_reference_id =  '*'
-        a.next_reference_start= '0'
+        # a.next_reference_id = '0'
+        # a.next_reference_start= '0'
         a.template_length= len(query_sequence) / 100
-        a.query_qualities = '*'
+        # a.query_qualities = '*'
         # a.tags = (("NM", 1),
         #         ("RG", "L1"))
         outf.write(a)
@@ -147,12 +148,13 @@ def align(s,output_file):
     gap = 5
     count = 0
     with gzip.open(s, 'rt') as rfile:
+        time = timer.Timer()
+        time.start()
         for name, seq, qual in rf.readfq(rfile):
-            if count == 1:
+            if count == 1000:
+                time.stop()
                 break
             count += 1
-            # print(seq)
-            # seq = 'ATTACCTAAAGGCATAATGATGAATGTCCCAAAATATACTCAACTGTGTCAATATTTAAACACATTAACATTAGCTGTACCCTATAATATGAGAGTTATA'
             seq = seq.replace("N", "A")
             alignments = []
             read_len = len(seq)
@@ -163,18 +165,18 @@ def align(s,output_file):
                 seed_end = min(read_len, seed_start + skip) 
                 match_len = 0
                 interval = bwt_index.get_interval(seq[seed_start:seed_end])
-            
             if interval == None or interval == 0:
                 continue
             for ref_pos in bwt_index.ref_positions(interval, seed_end, match_len):
+                print(seq)
                 alignment = bwt_index.fitting_alignment(seq,ref_pos,gap)
                 if alignment.score > best_score:
                     best_score = alignment.score
                     alignments = [alignment]
                 elif alignment.score == best_score:
-                    alignments.append(alignment)
-                print(ref_pos)  
-                
+                    print(seq)
+                    alignments.append(alignment)  
+            
             for a in alignments:
                 write_to_sam(output_file, a, name,seq)
                 
