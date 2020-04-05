@@ -8,8 +8,8 @@ import os
 import pysam
 import helpers
 import gzip
-import numpy as np
 import math 
+import re
 import readfq as rf
 
 #------Handle input------#
@@ -22,7 +22,8 @@ def parseCommandLineArgs(args=[]):
     elif 'align' in args:
         #run the align function
         print("running align function")
-        align()
+        #refractor to take in path from command line
+        align('data/reads.fa.gz','alignments.sam')
 
     else:
         print("Error parsing commanding arguments, invalid command.")
@@ -58,7 +59,53 @@ def genericWriteToOutput(input,fileName):
     with open(fileName,'w') as f:
         f.write(input)
 
+
 # align helpers 
+def generateCigarTuple(finalCigar):
+    tup = ()
+    pattern = re.compile(r'([0-9]+)([A-Z]+)')
+
+    for (numbers,letters,) in re.findall(pattern, finalCigar):
+        if letters == 'M':
+            num = 0
+        elif letters == 'I':
+            num = 1
+        else:
+            num = 2
+
+        if not tup == ():
+            tup = tup + ((num,int(numbers)),)      
+        else:
+            tup = ((num,int(numbers)),)
+    return tup 
+
+def write_to_sam(output_file,alignment, read_name, query_sequence):
+   
+
+    cig = generateCigarTuple(alignment.cigar)
+    print(cig)
+    print(alignment.posInRef)
+    return 
+    header = { 'HD': {'VN': '1.0'},
+            'SQ': [{'LN': 29882, 'SN':'MN988713.1 Severe acute respiratory syndrome coronavirus 2 isolate 2019-nCoV/USA-IL1/2020, complete genome'}] }
+
+    with pysam.AlignmentFile('assignments.sam', "wb", header=header) as outf:
+        a = pysam.AlignedSegment()
+        a.query_name = read_name
+        a.query_sequence= query_sequence
+        a.flag = 0
+        a.reference_id = 0
+        a.reference_start = alignment.posInRef + 1
+        a.mapping_quality = 255
+        a.cigar = cig
+        a.next_reference_id =  '*'
+        a.next_reference_start= '0'
+        a.template_length= len(query_sequence) / 100
+        a.query_qualities = '*'
+        # a.tags = (("NM", 1),
+        #         ("RG", "L1"))
+        outf.write(a)
+ 
 
 
 #------Start command Functions-------#
@@ -76,10 +123,11 @@ def index(name,s):
     length = len(s)
     refString = s
     firstCol = helpers.generateFirstCol(s)
-    occurenceTable = helpers.firstOccurTable(firstCol)
+    lastCol = helpers.buildBWT(s)
+    occurenceTable = helpers.occurenceTable(None,lastCol)
     (_,sa) = helpers.suffixArray(s)
     # genericWriteToOutput(str(occurenceTable))
-    lastCol = helpers.buildBWT(s)
+
   
     with open('ref_index','w') as f:
         f.write('name: \n' + name + '\n')
@@ -90,16 +138,22 @@ def index(name,s):
         f.write('occurence table: \n' + str(occurenceTable) + '\n')
         f.write('suffix array: \n' + str(sa) + '\n')
 
-def align(s):
+def align(s,output_file):
     # outputFile = 'alignments.sam'
     bwt_index = helpers.BWTIndex()
     
     ninf = float("-inf")
     seed_skip = lambda l: math.floor(l / 5.0)
     gap = 5
-
-    with gzip.open('data/reads.fa.gz', 'rt') as rfile:
+    count = 0
+    with gzip.open(s, 'rt') as rfile:
         for name, seq, qual in rf.readfq(rfile):
+            if count == 1:
+                break
+            count += 1
+            # print(seq)
+            # seq = 'ATTACCTAAAGGCATAATGATGAATGTCCCAAAATATACTCAACTGTGTCAATATTTAAACACATTAACATTAGCTGTACCCTATAATATGAGAGTTATA'
+            seq = seq.replace("N", "A")
             alignments = []
             read_len = len(seq)
             best_score = ninf
@@ -107,11 +161,23 @@ def align(s):
             skip = seed_skip(read_len)
             for seed_start in range(0, read_len, skip):
                 seed_end = min(read_len, seed_start + skip) 
-
-                interval, match_len = bwt_index.get_interval(seq[seed_start:seed_end])
-
-    
-
+                match_len = 0
+                interval = bwt_index.get_interval(seq[seed_start:seed_end])
+            
+            if interval == None or interval == 0:
+                continue
+            for ref_pos in bwt_index.ref_positions(interval, seed_end, match_len):
+                alignment = bwt_index.fitting_alignment(seq,ref_pos,gap)
+                if alignment.score > best_score:
+                    best_score = alignment.score
+                    alignments = [alignment]
+                elif alignment.score == best_score:
+                    alignments.append(alignment)
+                print(ref_pos)  
+                
+            for a in alignments:
+                write_to_sam(output_file, a, name,seq)
+                
 #------ End command functions-------#
 
 
