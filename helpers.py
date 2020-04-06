@@ -213,7 +213,7 @@ def createCigar(directionMatrix,largestIndex):
           finalCigar += str(count) + currentChar
 
   
-  print(finalCigar)
+#   print(finalCigar)
   return (finalCigar, originalPosInRef)
 
 
@@ -323,7 +323,7 @@ class BWTIndex:
         sl = self.reference[startPosition: endPosition]
         # create matrixes
         (valuesMatrix,dirMatrix) = generateAlignmentMatrixes(sl,seq) 
-
+        print(sl)
         # edit distance
         for row in range(1,len(seq) + 1):
             for col in range(1,len(sl) + 1):
