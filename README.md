@@ -17,9 +17,9 @@ are not within the projects directory please make sure you specify the
 full path. 
 
 To run the align function:
-### python.py fmmap.py fmmap align ref_index reads.fa alignments.sam ###
+### python3 fmmap.py fmmap align ref_index reads.fa alignments.sam ###
 
 **NOTE**
-ref_index and alignments.sam must be valid paths.If the following files
+ref_index, reads.fa and alignments.sam must be valid paths.If the following files
 are not within the projects directory please make sure you specify the 
 full path. 
