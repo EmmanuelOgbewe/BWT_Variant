@@ -2,6 +2,7 @@
 
 #### Basic read alignment tool, based on the seed-and-extend using the FM-index for efficient seed finding. ####
 
+
 Make sure to have the following modules installed if not already:
 
 `pip3 install numpy`
